@@ -43,6 +43,7 @@ import com.android.mms.util.DraftCache;
 import com.android.mms.util.PduLoaderManager;
 import com.android.mms.util.RateController;
 import com.android.mms.util.ThumbnailManager;
+import com.android.mms.util.Constants;
 
 public class MmsApp extends Application {
     public static final String LOG_TAG = "Mms";
@@ -56,6 +57,7 @@ public class MmsApp extends Application {
     private PduLoaderManager mPduLoaderManager;
     private ThumbnailManager mThumbnailManager;
     private DrmManagerClient mDrmManagerClient;
+    private static Context mContext; 
 
     @Override
     public void onCreate() {
@@ -68,7 +70,7 @@ public class MmsApp extends Application {
             StrictMode.setThreadPolicy(
                     new StrictMode.ThreadPolicy.Builder().detectAll().penaltyLog().build());
         }
-
+		mContext = this;
         sMmsApp = this;
 
         // Load the default preference values
@@ -84,7 +86,7 @@ public class MmsApp extends Application {
         };
         mCountryDetector.addCountryListener(mCountryListener, getMainLooper());
 
-        Context context = getApplicationContext();
+        Context context = getContext();
         mPduLoaderManager = new PduLoaderManager(context);
         mThumbnailManager = new ThumbnailManager(context);
 
@@ -98,6 +100,10 @@ public class MmsApp extends Application {
         MessagingNotification.init(this);
 
         activePendingMessages();
+    }
+
+   	public static Context getContext() {
+        return mContext;
     }
 
     /**

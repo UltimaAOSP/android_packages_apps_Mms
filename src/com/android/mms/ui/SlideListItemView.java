@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.util.Map;
 
 import android.content.Context;
+import android.content.res.TypedArray;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.media.MediaPlayer;
@@ -34,6 +35,7 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import com.android.mms.MmsApp;
 import com.android.mms.R;
 
 /**
@@ -46,6 +48,7 @@ public class SlideListItemView extends LinearLayout implements SlideViewInterfac
     private ImageView mImagePreview;
     private TextView mAttachmentName;
     private ImageView mAttachmentIcon;
+    private static Context mContext = MmsApp.getContext();
 
     public SlideListItemView(Context context) {
         super(context);
@@ -84,11 +87,16 @@ public class SlideListItemView extends LinearLayout implements SlideViewInterfac
 
     public void setImage(String name, Bitmap bitmap) {
         try {
+        	int[] attrs = new int[] { R.attr.missingThumbNailPicture };
+
+        	TypedArray ta = mContext.obtainStyledAttributes(attrs);
+
             if (null == bitmap) {
                 bitmap = BitmapFactory.decodeResource(getResources(),
-                        R.drawable.ic_missing_thumbnail_picture);
+                		ta.getResourceId(0, R.drawable.ic_missing_thumbnail_picture));
             }
             mImagePreview.setImageBitmap(bitmap);
+            ta.recycle();
         } catch (java.lang.OutOfMemoryError e) {
             Log.e(TAG, "setImage: out of memory: ", e);
         }

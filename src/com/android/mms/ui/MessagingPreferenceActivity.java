@@ -44,13 +44,14 @@ import android.text.TextUtils;
 import android.view.Menu;
 import android.view.MenuItem;
 
-import com.android.internal.telephony.util.BlacklistUtils;
 import com.android.mms.MmsApp;
 import com.android.mms.MmsConfig;
 import com.android.mms.R;
 import com.android.mms.templates.TemplatesListActivity;
 import com.android.mms.transaction.TransactionService;
 import com.android.mms.util.Recycler;
+import com.android.mms.util.Constants;
+import com.android.mms.util.Preferences;
 
 /**
  * With this activity, users can set preferences for MMS and SMS and
@@ -108,8 +109,8 @@ public class MessagingPreferenceActivity extends PreferenceActivity
     public static final String QM_CLOSE_ALL_ENABLED      = "pref_key_close_all";
     public static final String QM_DARK_THEME_ENABLED     = "pref_dark_theme";
 
-    // Blacklist
-    public static final String BLACKLIST                 = "pref_blacklist";
+    // ThemePicker
+    public static final String THEMEPICKER               = "pref_theme";
 
     // Menu entries
     private static final int MENU_RESTORE_DEFAULTS    = 1;
@@ -166,11 +167,12 @@ public class MessagingPreferenceActivity extends PreferenceActivity
     private CheckBoxPreference mEnableQmCloseAllPref;
     private CheckBoxPreference mEnableQmDarkThemePref;
 
-    // Blacklist
-    private PreferenceScreen mBlacklist;
+    // Theme Selection
+    private ListPreference mThemeListPicker;
 
     @Override
     protected void onCreate(Bundle icicle) {
+	   	setTheme(Preferences.getTheme());
         super.onCreate(icicle);
 
         loadPrefs();
@@ -189,21 +191,10 @@ public class MessagingPreferenceActivity extends PreferenceActivity
         }
 
         // Since the enabled notifications pref can be changed outside of this activity,
-        // we have to reload it whenever we resume, including the blacklist summary
+        // we have to reload it whenever we resume
         setEnabledNotificationsPref();
-        updateBlacklistSummary();
         registerListeners();
         updateSmsEnabledState();
-    }
-
-    private void updateBlacklistSummary() {
-        if (mBlacklist != null) {
-            if (BlacklistUtils.isBlacklistEnabled(this)) {
-                mBlacklist.setSummary(R.string.blacklist_summary);
-            } else {
-                mBlacklist.setSummary(R.string.blacklist_summary_disabled);
-            }
-        }
     }
 
     private void updateSmsEnabledState() {
@@ -267,16 +258,9 @@ public class MessagingPreferenceActivity extends PreferenceActivity
         mInputTypeEntries = getResources().getTextArray(R.array.pref_entries_input_type);
         mInputTypeValues = getResources().getTextArray(R.array.pref_values_input_type);
 
-        // Blacklist screen - Needed for setting summary
-        mBlacklist = (PreferenceScreen) findPreference(BLACKLIST);
-
-        // Remove the Blacklist item if we are not running on CyanogenMod
-        // This allows the app to be run on non-blacklist enabled roms (including Stock)
-        if (!MessageUtils.isCyanogenMod(this)) {
-            PreferenceCategory extraCategory = (PreferenceCategory) findPreference("pref_key_extra_settings");
-            extraCategory.removePreference(mBlacklist);
-            mBlacklist = null;
-        }
+        // Theme chooser
+        mThemeListPicker = (ListPreference) findPreference(THEMEPICKER);
+        mThemeListPicker.setSummary(mThemeListPicker.getEntry());
 
         // SMS Sending Delay
         mMessageSendDelayPref = (ListPreference) findPreference(SEND_DELAY_DURATION);
@@ -418,6 +402,9 @@ public class MessagingPreferenceActivity extends PreferenceActivity
         mInputTypePref.setOnPreferenceChangeListener(this);
 
         mMessageSendDelayPref.setOnPreferenceChangeListener(this);
+        
+        mThemeListPicker.setOnPreferenceChangeListener(this);
+
     }
 
     public static long getMessageSendDelayDuration(Context context) {
@@ -517,13 +504,22 @@ public class MessagingPreferenceActivity extends PreferenceActivity
     @Override
     public boolean onPreferenceTreeClick(PreferenceScreen preferenceScreen,
             Preference preference) {
+			// Making sure the popup dialog theme is changed depending on app theme
+    		int themeValue = 0;
+    		if(!(Preferences.getCurrentTheme() == 2)){
+    			themeValue = 3;
+    		}
+    		else{
+    			themeValue = 2;
+    		}
         if (preference == mSmsLimitPref) {
             new NumberPickerDialog(this,
                     mSmsLimitListener,
                     mSmsRecycler.getMessageLimit(this),
                     mSmsRecycler.getMessageMinLimit(),
                     mSmsRecycler.getMessageMaxLimit(),
-                    R.string.pref_title_sms_delete).show();
+                    R.string.pref_title_sms_delete,
+					themeValue).show();
 
         } else if (preference == mMmsLimitPref) {
             new NumberPickerDialog(this,
@@ -531,7 +527,8 @@ public class MessagingPreferenceActivity extends PreferenceActivity
                     mMmsRecycler.getMessageLimit(this),
                     mMmsRecycler.getMessageMinLimit(),
                     mMmsRecycler.getMessageMaxLimit(),
-                    R.string.pref_title_mms_delete).show();
+                    R.string.pref_title_mms_delete,
+					themeValue).show();
 
         } else if (preference == mManageSimPref) {
             startActivity(new Intent(this, ManageSimMessages.class));
@@ -733,6 +730,20 @@ public class MessagingPreferenceActivity extends PreferenceActivity
             mMessageSendDelayPref.setValue(value);
             mMessageSendDelayPref.setSummary(mMessageSendDelayPref.getEntry());
             result = true;
+        } else if (preference == mThemeListPicker) {
+            String value = (String) newValue;
+            mThemeListPicker.setValue(value);
+            mThemeListPicker.setSummary(mThemeListPicker.getEntry());
+            Preferences.setTheme(Integer.parseInt(value));
+
+			// I know it's bad practice to kill the app entirely
+			// but it's the only way I could find to make sure the
+			// theme was applied to all activities immediately          
+            System.exit(0);
+            Intent intent1 = new Intent(getBaseContext(), MessagingPreferenceActivity.class);
+            intent1.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+            intent1.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);  
+           startActivity(intent1);
         }
         return result;
     }
